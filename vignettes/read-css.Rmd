@@ -1,0 +1,73 @@
+---
+title: "Reading/Parsing CSS"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reading/Parsing CSS}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(cssparser)
+```
+
+## Introduction
+
+`cssparser::read_css()` is used to parse CSS stored in a string or in a file.
+
+The returned object is a named list where:
+
+* the names correspond to the [CSS selectors](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors)
+* the values are [declaration blocks](https://developer.mozilla.org/en-US/docs/Web/CSS/Syntax#css_declaration_blocks) which are named lists where:
+    * the name is the [CSS property](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Properties_Reference) e.g. `background-color`, `font-size` etc
+    * the value represents the setting for that property e.g. `#ff88bb`, `12px`
+
+
+## Example 
+
+```{r}
+library(cssparser)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# a Stylesheet to read
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stylesheet <- '
+#main {
+  background-color: red !important;
+  color: blue;
+}
+
+.footer {
+  border-color: rgb(50 100 255);
+  font-weight: lighter;
+  margin-left: 1cm;
+}
+
+.footer > p {
+  background-color: green;
+}
+'
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Read the above stylesheet into a CSS object in R
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+css <- cssparser::read_css(stylesheet)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Access the declaration block for `#main` id selector
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+css[['#main']]
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Access the 'font-weight' for the '.footer' class selector
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+css[['.footer']][['font-weight']]
+```
+

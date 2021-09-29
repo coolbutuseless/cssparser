@@ -1,0 +1,11 @@
+#greg {
+  fill: red !important;
+  color: blue;
+}
+
+.thin {
+  border: 1px;
+  border-color: hsl(30 50% 40%);
+  font-weight: lighter;
+}
+

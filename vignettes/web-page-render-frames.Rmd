@@ -1,0 +1,281 @@
+---
+title: "A Toy HTML Layout Engine in R"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{A Toy HTML Layout Engine in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+set.seed(1)
+library(grid)
+library(cssparser)
+```
+
+
+# Introduction
+
+This is a small proof of concept of rendering HTML in R.
+
+
+```{r}
+library(grid)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#' Render a sequence of grobs side-by-side
+#'
+#' @param grobs list of grobs
+#' @param widths widths of grobs
+#' @param default.unit default grid unit for width. 
+#' @param name grob name. default: NULL (auto naming)
+#'
+#' @return horizontal combination of grobs
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hsplit <- function(grobs, widths = NULL, default.units = 'null', name = NULL) {
+  N <- length(grobs)
+  stopifnot(N > 0)
+  
+  if (is.null(widths)) widths <- unit(rep_len(1, N), 'null')
+  if (!grid::is.unit(widths)) {
+    widths <- unit(widths, default.units)
+  }
+  
+  frame <- frameGrob(layout = grid.layout(ncol = N, just = 'left'))
+  
+  for (i in seq(N)) {
+    frame <- packGrob(frame, grobs[[i]], col = i, width = widths[i])
+  }
+  
+  frame
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#' Render a sequence of grobs in a vertical sequence
+#'
+#' @param grobs list of grobs
+#' @param heights heights of grobs
+#' @param default.unit default grid unit for height 
+#' @param name grob name. default: NULL (auto naming)
+#'
+#' @return vertical combination of grobs
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+vsplit <- function(grobs, heights = NULL, default.units = 'null', name = NULL) {
+  
+  N <- length(grobs)
+  stopifnot(N > 0)
+  
+  if (is.null(heights)) heights <- unit(rep_len(1, N), 'null')
+  if (!grid::is.unit(heights)) {
+    heights <- unit(heights, default.units)
+  }
+  
+  frame <- frameGrob(layout = grid.layout(nrow = N, just = 'top'))
+  
+  for (i in seq(N)) {
+    frame <- packGrob(frame, grobs[[i]], row = i, height = heights[i])
+  }
+  
+  frame
+}
+```
+
+
+
+
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The CSS to apply to the HTML
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+css <- cssparser::read_css('
+  h1 { font-size: 36px; font-weight: bold;}
+  h2 { font-size: 30px; font-weight: bold;}
+  h3 { font-size: 24px; font-weight: bold;}
+  h4 { font-size: 16px; font-weight: bold;}
+  #main > h1 { color: darkblue; font-style: italic;}
+  #footer > p { color: blue; font-style: oblique;}
+  .emph {color: darkred;}
+  .whisper {color: #666666;}
+  a { color: blue; }
+  .pkg {font-family: Courier; color: darkgreen;}
+')
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The HTML document
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+html <- xml2::read_html('
+<html>
+<body>
+  <div style="width:20%; float:left;">
+    <h3>Artist\'s Statement</h3>
+    <p> This probably wasn\'t a good idea </p>
+    <div> 
+      <img src="Rlogo.jpg"></img>
+    </div>
+  </div>
+  <div id="main" style="width:60%; float:left;">
+    <h1> A Toy HTML Layout Engine in R </h1>
+    <p> To render a web page from HTML you will need a number of components: 
+       a way to parse the HTML text, a way to parse and apply the CSS, 
+       a layout engine to combine the HTML and CSS to figure out where everything
+       goes on the page, and an actual way of rendering the layout. </p>
+    <h3> The R components </h3>
+    <p> <span class="pkg">{xml2}</span> is used to parse the HTML text into structured representation in R </p>
+    <p> <span class="pkg">{cssparser}</span> is used to parse the CSS text into structured representation in R </p>
+    <p> <span class="pkg">{grid}</span> is used to render the layout as frame objects </p>
+    <p> <span class="pkg">{gridtext}</span> is used to render styled text blocks </p>
+    <p> The code in this vignette performs the layout of elements </p>
+    <h3> Technical Bit </h3>
+    <p> The layout engine in this vignette is obviously a <span class="emph"> complete hack. </span> </p>
+    <p> The web page layout is a nested sequence of `grid::frameGrob()` objects, 
+        with a few dodgy heuristics on whether the current frame is a sequence of
+        row elements or column elements </p>
+    <p> Other than "p" and "div" tags, everything else is either ignored or 
+        hacked to behave like a "p" tag.  </p>
+    <p class="whisper"> If you look 
+        closely at the code, you\'ll find that "img" tags are just rendered via a 
+        hard-coded rasterGrob() </p>
+    <div id="footer"> 
+      <h4> Contact </h4>
+      <div style="width:50%;">
+        <p> @coolbutuseless </p>
+      </div>
+      <div style="width:50%;">
+        <a href="http://github.com/coolbutuseless">Coolbutuseless on github</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+')
+```
+
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Apply the final calcualted style as inline styles on each element in the
+# HTML document
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+html    <- cssparser::css_apply_inline(html, css)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Also calculate a named list of styles, where the name is the 'xpath' to
+# a given node
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xpstyle <- cssparser::css_apply(html, css)
+```
+
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Convert all headers (<h1> etc) to <p> tags
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hs <- xml2::xml_find_all(html, xpath = "//h1 | //h2 | //h3 | //h4")
+for (h in hs) {
+  xml2::xml_name(h) <- 'p'
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Convert all 'a' link tags in html to 'p'
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+alinks <- xml2::xml_find_all(html, xpath = "//a")
+for (alink in alinks) {
+  xml2::xml_name(alink) <- 'p'
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#' Find the width of a given HTML node
+#'
+#' @param x html node (in a document read in with {xml2})
+#'
+#' @return the calculated 'width' of this node (determined using its xpath)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+get_width <- function(x) {
+  xpath <- xml2::xml_path(x)
+  style <- xpstyle[[xpath]]
+  style[['width']]
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#' Recursively convert an HTML node to grob objects
+#'
+#' @param node HTML documet node. Usually called with root node of document
+#'
+#' @return grob
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+node_to_grob <- function(node) {
+  xpath <- xml2::xml_path(node)
+  tag   <- xml2::xml_name(node)
+  
+  if (tag %in% c('div', 'body')) {
+    grobs <- lapply(xml2::xml_children(node), node_to_grob)
+    
+    widths <- vapply(xml2::xml_children(node), function(node) {
+      cssparser::css_string_as_pixels(get_width(node)) 
+    }, numeric(1))
+    
+    if (any(widths > 0)) {
+      units <- ifelse(widths == 0, 'null', ifelse(widths <= 1, 'npc', 'px'))
+      widths[widths == 0] <- 1
+      widths <- unit(widths, units)
+      hsplit(grobs, widths = widths, name = xpath)
+    } else {
+      heights <- vapply(grobs, function(grob) {
+        h <- grid::grobHeight(grob)
+        as.numeric(grid::convertHeight(h, 'in'))
+      }, numeric(1))
+      units <- ifelse(heights > 0, 'pt', 'null')
+      heights <- heights * 96 * 1.2
+      heights[heights == 0] <- 1
+      heights <- unit(heights, units) 
+      vsplit(grobs, heights = heights)
+    }
+    
+  } else if (tag == 'p') {
+    gridtext::textbox_grob(as.character(node), name = xpath)
+  } else if (tag == 'img') {
+    # Hard-coded cheat
+    img <- jpeg::readJPEG(system.file("img", "Rlogo.jpg", package="jpeg"))
+    grid::rasterGrob(img, interpolate = TRUE, width=unit(3, 'cm'))
+  } else {
+    message("Skipping tag: ", tag)
+    grid::nullGrob(name = xpath)
+  }
+  
+}
+```
+
+
+```{r output.width=12, output.height=10, fig.height=10, fig.width=12}
+node <- xml2::xml_find_first(html, 'body')
+g <- node_to_grob(node)
+
+
+grid.newpage()
+grid.draw(g)
+```
+
+
+
+
+
+
+
+
+
+
+

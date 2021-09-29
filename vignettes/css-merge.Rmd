@@ -1,0 +1,105 @@
+---
+title: "Merging/Cascading CSS and Individual Styles"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Merging/Cascading CSS and Individual Styles}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = " "
+)
+```
+
+```{r setup}
+library(cssparser)
+```
+
+
+## Introduction
+
+There are two types of merging to think about when dealing with CSS: 
+
+* Merge two (or more) stylesheets with `css_merge()`
+    * For example all browsers include their own
+      built-in stylesheet, and then then this is cascaded with the stylesheet on the page.
+* Merge two (or more) styles for a single element with `style_merge()`
+    * E.g. the stylesheet may indicate that this element is styled as `color: blue !important; font-size: 12px;`, 
+      and the inline style attribute might want to style as `color: red;`.
+
+
+Essentially these are the same operation, with the `css_merge()` being a nested version 
+of `style_merge()`.
+
+
+## Merging CSS
+
+Merge complete stylsheets with `css_merge()`
+
+```{r}
+css1 <- cssparser::read_css('
+#main {
+  color: red !important;
+  font-size: 11px;
+  margin-top: 10px;
+}
+.footer {
+  color: #888888;
+  font-size: 6px;
+}
+.soft {
+  color: #aaa;
+}
+')
+
+
+css2 <- cssparser::read_css('
+#main {
+  color: blue;
+  font-size: 14px;
+  background-color: white;
+  margin-top: 14px;
+}
+.footer {
+  background-color: #bbb;
+}
+.emph {
+  font-weight: bold;
+}
+')
+
+css_final <- cssparser::css_merge(css1, css2)
+
+css_pretty_print(css_final)
+```
+
+
+## Merging individual styles
+
+Merge styles for an individual element with `style_merge()`
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Pull styles from 2 different stylesheets, and the inline style
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+style1 <- css1[['#main']]
+style2 <- css2[['#main']]
+style3 <- cssparser::read_inline_style("color: yellow; font-size: 18px;")
+style_pretty_print(style1)
+style_pretty_print(style2)
+style_pretty_print(style3)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Merge these 3 styles, with inline style taking highest prioirty
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+style_final <- style_merge(style1, style2, style3)
+style_pretty_print(style_final)
+```
+
+
+
+
+

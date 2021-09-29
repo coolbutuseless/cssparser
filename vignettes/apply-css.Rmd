@@ -1,0 +1,174 @@
+---
+title: "Applying CSS to HTML"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Applying CSS to HTML}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(cssparser)
+```
+
+## Introduction
+
+Once CSS has been read in (via `cssparser::read_css()`) it can be applied to 
+an HTML document in 2 ways:
+
+1. Ceate a list of final computed/cascaded styles indexed by each HTML element's [xpath](https://developer.mozilla.org/en-US/docs/Web/XPath)
+2. Create a new HTML document where the final computed/cascaded styles are 
+included as inline `style` attributes on each element.
+
+In both cases the HTML document must be that created by a call to `xml2::read_html()` 
+or `xml2::read_xml()`.
+
+## Preamble: Define the CSS and HTML
+
+```{r}
+library(cssparser)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# a Stylesheet to read
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stylesheet <- '
+#main {
+  background-color: red !important;
+  color: blue;
+}
+
+.footer {
+  border-color: rgb(50 100 255);
+  font-weight: lighter;
+  margin-left: 1cm;
+}
+
+.footer > p {
+  background-color: green;
+}
+'
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Read the above stylesheet into a CSS object in R
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+css <- cssparser::read_css(stylesheet)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Define the HTML
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+html_doc <- '
+<html>
+  <body>
+    <div id="main" style="background-color: yellow; font-size: 12px">
+      <p> Main content is here ... </p>
+    </div>
+    <div class="footer">
+      <p> Contact me </p>
+    </div>
+  </body>
+</html>
+'
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Use 'xml2' to read the HTML into R
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+html <- xml2::read_html(html_doc)
+```
+
+## 1. Apply CSS to create list of styles inddexed by each elements xpath
+
+In the following example:
+
+* use the `html` and `css` read in above
+* create a new `xpstyle` list which contains the computed style for each element.
+* the style for each element is indexed by its xpath 
+
+Note the following:
+
+* the `background-color: red !important` attribute has overridden the inline
+  style specified on the `#main` div.
+* the `<p>` element which is a direct child of the `.footer` class has been
+  correctly assigned `background-color = 'green'`, but this does not apply to 
+  the other `<p>` tag which does not match the selector.
+* the `margin-left` property on the `.footer` div is not inhertied by its
+  `<p>` child, as margin properties are never inhertied.
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Create list of styles
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xpstyle <- cssparser::css_apply(html, css)
+names(xpstyle)
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The "\#main" div is the first div in the document and has 
+# an xpath of "/html/body/div[1]"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xpstyle[['/html/body/div[1]']]
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The ".footer" div has an xpath of "/html/body/div[2]"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xpstyle[['/html/body/div[2]']]
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The <p> within the ".footer" div has an xpath of "/html/body/div[2]/p"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xpstyle[['/html/body/div[2]/p']]
+```
+
+
+
+
+## 2. Apply CSS to inline style attributes on each element
+
+In the following example:
+
+* use the `html` and `css` read in above
+* use `css_apply_inline()` to apply the `css` to create a new html document with
+  the final computed/cascaded style for each element
+
+Note the following:
+
+* the `background-color: red !important` attribute has overridden the inline
+  style specified on the `#main` div.
+* the `<p>` element which is a direct child of the `.footer` class has been
+  correctly assigned `background-color = 'green'`, but this does not apply to 
+  the other `<p>` tag which does not match the selector.
+* the `margin-left` property on the `.footer` div is not inhertied by its
+  `<p>` child, as margin properties are never inhertied.
+
+```{r comment = ''}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Create list of styles
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+new_html <- cssparser::css_apply_inline(html, css)
+
+
+cat(as.character(new_html))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
