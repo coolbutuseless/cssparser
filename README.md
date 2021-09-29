@@ -9,6 +9,8 @@
 [![R-CMD-check](https://github.com/coolbutuseless/cssparser/workflows/R-CMD-check/badge.svg)](https://github.com/coolbutuseless/cssparser/actions)
 <!-- badges: end -->
 
+<img src="man/figures/titlecard.png">
+
 `cssparser` is a CSS parser (written in vanilla R) which can:
 
 -   Parse CSS into R lists
