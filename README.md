@@ -6,6 +6,7 @@
 <!-- badges: start -->
 
 ![](https://img.shields.io/badge/cool-useless-green.svg)
+[![R-CMD-check](https://github.com/coolbutuseless/cssparser/workflows/R-CMD-check/badge.svg)](https://github.com/coolbutuseless/cssparser/actions)
 <!-- badges: end -->
 
 `cssparser` is a CSS parser (written in vanilla R) which can:
