@@ -17,10 +17,11 @@ xml_duplicate <- function(x) {
   chr <- as.character(x)
   if (startsWith(chr, "<!DOCTYPE")) {
     xml2::read_html(chr)
-  } else if (startsWith(chr, "<?xml")) {
+  } else if (startsWith(chr, "<?xml") || startsWith(chr, "<svg")) {
     xml2::read_xml(chr)
   } else {
-    stop("Not sure if this is XML or HTML. Hopefully this error never happens.")
+    message("Not sure if this is XML or HTML. Duplicating as HTML")
+    xml2::read_html(chr)
   }
 }
 
