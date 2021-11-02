@@ -1,7 +1,7 @@
 Package: cssparser
 Type: Package
 Title: Simple CSS Parser and Tools
-Version: 0.1.0
+Version: 0.1.1
 Author: mikefc
 Maintainer: mikefc <mikefc@coolbutuseless.com>
 Description: Simple CSS parser and tools.
